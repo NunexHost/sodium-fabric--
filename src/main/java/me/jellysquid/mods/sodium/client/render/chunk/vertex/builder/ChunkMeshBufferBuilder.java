@@ -38,8 +38,11 @@ public class ChunkMeshBufferBuilder {
             this.grow(this.stride * vertexCount);
         }
 
+        long ptr = MemoryUtil.memAddress(this.buffer, this.count * this.stride);
+
         for (ChunkVertexEncoder.Vertex vertex : vertices) {
-            this.encoder.write(this.buffer, material, vertex, this.sectionIndex);
+            this.encoder.write(ptr, material, vertex, this.sectionIndex);
+            ptr += this.stride;
         }
 
         this.count += vertexCount;
