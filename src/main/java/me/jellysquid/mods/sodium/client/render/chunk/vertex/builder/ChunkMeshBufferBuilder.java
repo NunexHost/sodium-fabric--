@@ -6,6 +6,7 @@ import me.jellysquid.mods.sodium.client.render.chunk.vertex.format.ChunkVertexTy
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public class ChunkMeshBufferBuilder {
     private final ChunkVertexEncoder encoder;
@@ -22,7 +23,8 @@ public class ChunkMeshBufferBuilder {
         this.encoder = vertexType.getEncoder();
         this.stride = vertexType.getVertexFormat().getStride();
 
-        this.buffer = null;
+        this.buffer = ByteBuffer.allocateDirect(initialCapacity * stride);
+        this.buffer.order(ByteOrder.nativeOrder());
 
         this.capacity = initialCapacity;
         this.initialCapacity = initialCapacity;
@@ -36,10 +38,8 @@ public class ChunkMeshBufferBuilder {
             this.grow(this.stride * vertexCount);
         }
 
-        long ptr = MemoryUtil.memAddress(this.buffer, this.count * this.stride);
-
         for (ChunkVertexEncoder.Vertex vertex : vertices) {
-            ptr = this.encoder.write(ptr, material, vertex, this.sectionIndex);
+            this.encoder.write(this.buffer, material, vertex, this.sectionIndex);
         }
 
         this.count += vertexCount;
@@ -50,19 +50,15 @@ public class ChunkMeshBufferBuilder {
         int cap = Math.max(this.capacity * 2, this.capacity + len);
 
         // Update the buffer and capacity now
-        this.setBufferSize(cap * this.stride);
-    }
-
-    private void setBufferSize(int capacity) {
-        this.buffer = MemoryUtil.memRealloc(this.buffer, capacity * this.stride);
-        this.capacity = capacity;
+        this.buffer = ByteBuffer.allocateDirect(cap * this.stride);
+        this.buffer.order(ByteOrder.nativeOrder());
+        this.buffer.put(this.buffer.slice());
+        this.capacity = cap;
     }
 
     public void start(int sectionIndex) {
         this.count = 0;
         this.sectionIndex = sectionIndex;
-
-        this.setBufferSize(this.initialCapacity);
     }
 
     public void destroy() {
@@ -82,7 +78,7 @@ public class ChunkMeshBufferBuilder {
             throw new IllegalStateException("No vertex data in buffer");
         }
 
-        return MemoryUtil.memSlice(this.buffer, 0, this.stride * this.count);
+        return this.buffer.slice();
     }
 
     public int count() {
