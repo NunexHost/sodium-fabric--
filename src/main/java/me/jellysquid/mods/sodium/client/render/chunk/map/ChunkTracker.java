@@ -5,7 +5,7 @@ import net.minecraft.util.math.ChunkPos;
 
 public class ChunkTracker implements ClientChunkEventListener {
     private final Long2IntOpenHashMap chunkStatus = new Long2IntOpenHashMap();
-    private final LongOpenHashSet chunkReady = new LongOpenHashSet();
+    private final LongSet chunkReady = new LongOpenHashSet();
 
     private final LongSet unloadQueue = new LongOpenHashSet();
     private final LongSet loadQueue = new LongOpenHashSet();
@@ -80,13 +80,11 @@ public class ChunkTracker implements ClientChunkEventListener {
         }
 
         if (flags == ChunkStatus.FLAG_ALL) {
-            if (this.chunkReady.add(key) && !this.unloadQueue.remove(key)) {
+            if (!this.unloadQueue.contains(key)) {
                 this.loadQueue.add(key);
             }
         } else {
-            if (this.chunkReady.remove(key) && !this.loadQueue.remove(key)) {
-                this.unloadQueue.add(key);
-            }
+            this.unloadQueue.add(key);
         }
     }
 
@@ -96,9 +94,9 @@ public class ChunkTracker implements ClientChunkEventListener {
 
     public void forEachEvent(ChunkEventHandler loadEventHandler, ChunkEventHandler unloadEventHandler) {
         forEachChunk(this.unloadQueue, unloadEventHandler);
-        this.unloadQueue.clear();
-
         forEachChunk(this.loadQueue, loadEventHandler);
+
+        this.unloadQueue.clear();
         this.loadQueue.clear();
     }
 
